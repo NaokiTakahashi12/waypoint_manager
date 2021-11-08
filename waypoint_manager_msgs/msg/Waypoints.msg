@@ -1,0 +1,2 @@
+WaypointsInfo info
+Waypoint[] waypoints
