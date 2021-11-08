@@ -20,6 +20,7 @@ namespace {
 namespace waypoint_server {
     Route::Route(const bool &debug) : debug(debug) {
         loop_mode.store(false);
+        count_of_skip_ids = 0;
         resetIndex();
     }
 
