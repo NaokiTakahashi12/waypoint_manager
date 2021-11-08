@@ -148,7 +148,7 @@ add_executable(radius_node
 set_target_properties(radius_node
     PROPERTIES
         OUTPUT_NAME radius_node
-        VERSION ${CMAKE_PROJECT_VERSION}
+        VERSION ${PROJECT_VERSION}
 )
 
 ## Add cmake target dependencies of the executable
