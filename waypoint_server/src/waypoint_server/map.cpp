@@ -227,10 +227,11 @@ namespace waypoint_server {
     }
 
     void Map::setQuaternion(const Key &key, const Waypoint::Quaternion &quaternion) {
-        std::lock_guard<std::mutex> lock(waypoints_mutex);
-
-        named_waypoints[key].quaternion = quaternion;
-        named_waypoints[key].goal.block(3, 0, 3, 1) = quaternion.toRotationMatrix().eulerAngles(0, 1, 2);
+        {
+            std::lock_guard<std::mutex> lock(waypoints_mutex);
+            named_waypoints[key].quaternion = quaternion;
+        }
+        setQuaternion(key);
     }
 
     void Map::setQuaternion(const Key &key) {
@@ -251,10 +252,6 @@ namespace waypoint_server {
         quaternion = Eigen::AngleAxisf(waypoint_euler_angles.z(), waypoint_euler_angles.UnitZ());
         quaternion = Eigen::AngleAxisf(waypoint_euler_angles.y(), waypoint_euler_angles.UnitY()) * quaternion;
         quaternion = Eigen::AngleAxisf(waypoint_euler_angles.x(), waypoint_euler_angles.UnitX()) * quaternion;
-
-        std::lock_guard<std::mutex> lock(waypoints_mutex);
-
-        named_waypoints[key].quaternion = quaternion;
     }
 
     const bool &Map::isConverted() const {

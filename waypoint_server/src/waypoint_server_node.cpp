@@ -497,6 +497,7 @@ namespace waypoint_server {
         for(const auto &[key, value] : msg->waypoint.properties) {
             waypoint_map[name].properties[key] = value;
         }
+        waypoint_map.setQuaternion(name);
         publishLatchedData();
     }
 
