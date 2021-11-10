@@ -428,8 +428,15 @@ namespace waypoint_server {
         }
     }
 
+    Map::Key generateKey(const std::atomic<unsigned int> &id, const std::string &prefix) {
+        return prefix
+               + std::to_string(id.load())
+               + "_"
+               + std::to_string(ros::Time::now().toNSec());
+    }
+
     void Node::registGoalPose(const geometry_msgs::PoseStamped::ConstPtr &msg) {
-        Map::Key name = param.regist_waypoint_prefix + std::to_string(regist_goal_id.load());
+        const Map::Key name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
 
         waypoint_map[name].goal.x() = msg->pose.position.x;
         waypoint_map[name].goal.y() = msg->pose.position.y;
@@ -448,7 +455,7 @@ namespace waypoint_server {
     }
 
     void Node::registGoalPoint(const geometry_msgs::PointStamped::ConstPtr &msg) {
-        Map::Key name = param.regist_waypoint_prefix + std::to_string(regist_goal_id.load());
+        const Map::Key name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
 
         waypoint_map[name].goal.x() = msg->point.x;
         waypoint_map[name].goal.y() = msg->point.y;
