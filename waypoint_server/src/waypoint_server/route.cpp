@@ -155,6 +155,50 @@ namespace waypoint_server {
         route_indexes.push_back(key);
     }
 
+    bool Route::insert(const int &base_posision, const Map::Key &key) {
+        if(route_indexes.size() <= base_posision) {
+            return FAILED;
+        }
+        route_indexes.insert(route_indexes.begin() + base_posision, key);
+
+        return SUCCESS;
+    }
+
+    bool Route::insertFromKey(const Map::Key &key, const Map::Key &insert_key, const bool &reverse) {
+        std::lock_guard<std::mutex> lock(route_mutex);
+        bool found_route_index = false;
+        int insert_position = 0;
+
+        if(reverse) {
+            for(auto itr = route_indexes.rbegin(); itr != route_indexes.rend(); ++ itr) {
+                if(*itr == key) {
+                    found_route_index = true;
+                    break;
+                }
+                insert_position ++;
+            }
+        }
+        else {
+            for(auto itr = route_indexes.begin(); itr != route_indexes.end(); ++ itr) {
+                if(*itr == key) {
+                    found_route_index = true;
+                    break;
+                }
+                insert_position ++;
+            }
+        }
+        if(!found_route_index) {
+            return FAILED;
+        }
+        if(reverse) {
+            route_indexes.insert(route_indexes.begin() + (route_indexes.size() - insert_position), insert_key);
+        }
+        else {
+            route_indexes.insert(route_indexes.begin() + insert_position, insert_key);
+        }
+        return SUCCESS;
+    }
+
     void Route::erase() {
         std::lock_guard<std::mutex> lock(route_mutex);
         route_indexes.clear();

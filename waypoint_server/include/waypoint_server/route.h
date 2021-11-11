@@ -36,6 +36,8 @@ namespace waypoint_server {
             const bool hasKey(const Map::Key &);
 
             void append(const Map::Key &);
+            bool insert(const int &base_posision, const Map::Key &);
+            bool insertFromKey(const Map::Key &, const Map::Key &insert_key, const bool &reverse = true);
 
             void erase();
             void erase(const Map::Key &);
