@@ -35,6 +35,7 @@ namespace waypoint_server {
                     route_topic,
                     append_route_topic,
                     erase_route_topic,
+                    insert_route_topic,
                     waypoints_topic;
 
         std::string regist_waypoint_prefix;
@@ -79,7 +80,8 @@ namespace waypoint_server {
                             erase_goal_subscriber,
                             update_goal_subscriber,
                             append_route_subscriber,
-                            erase_route_subscriber;
+                            erase_route_subscriber,
+                            insert_route_subscriber;
 
             ros::ServiceServer save_service,
                                save_waypoints_service,
@@ -103,7 +105,8 @@ namespace waypoint_server {
                  eraseGoal(const std_msgs::String::ConstPtr &),
                  updateGoalPose(const waypoint_manager_msgs::WaypointStamped::ConstPtr &),
                  appendRoute(const std_msgs::String::ConstPtr &),
-                 eraseRoute(const std_msgs::String::ConstPtr &);
+                 eraseRoute(const std_msgs::String::ConstPtr &),
+                 insertRoute(const std_msgs::String::ConstPtr &);
 
             bool save(
                 std_srvs::TriggerRequest &request,
@@ -192,6 +195,11 @@ namespace waypoint_server {
             "erase_route_topic",
             param.erase_route_topic,
             std::string("route/erase")
+        );
+        private_nh.param(
+            "insert_route_topic",
+            param.insert_route_topic,
+            std::string("route/insert")
         );
         private_nh.param(
             "waypoints_topic",
@@ -327,6 +335,13 @@ namespace waypoint_server {
                 &Node::eraseRoute,
                 this
               );
+        insert_route_subscriber
+            = nh.subscribe<std_msgs::String>(
+                param.insert_route_topic,
+                param.subscribe_queue_size,
+                &Node::insertRoute,
+                this
+              );
 
         save_service
             = private_nh.advertiseService(
@@ -436,7 +451,7 @@ namespace waypoint_server {
     }
 
     void Node::registGoalPose(const geometry_msgs::PoseStamped::ConstPtr &msg) {
-        const Map::Key name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
+        const auto name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
 
         waypoint_map[name].goal.x() = msg->pose.position.x;
         waypoint_map[name].goal.y() = msg->pose.position.y;
@@ -455,7 +470,7 @@ namespace waypoint_server {
     }
 
     void Node::registGoalPoint(const geometry_msgs::PointStamped::ConstPtr &msg) {
-        const Map::Key name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
+        const auto name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
 
         waypoint_map[name].goal.x() = msg->point.x;
         waypoint_map[name].goal.y() = msg->point.y;
@@ -517,6 +532,24 @@ namespace waypoint_server {
     void Node::eraseRoute(const std_msgs::String::ConstPtr &msg) {
         router.erase(msg->data);
 
+        publishLatchedData();
+    }
+
+    void Node::insertRoute(const std_msgs::String::ConstPtr &msg) {
+        if(!waypoint_map.hasKey(msg->data)) {
+            ROS_WARN("Do not have waypoint name");
+            return;
+        }
+        const auto name = generateKey(regist_goal_id, param.regist_waypoint_prefix);
+        waypoint_map[name].goal = waypoint_map[msg->data].goal;
+        waypoint_map.setQuaternion(name);
+
+        if(router.insertFromKey(msg->data, name, true)) {
+            ROS_INFO("Inserted route %s", name.c_str());
+        }
+        else {
+            ROS_INFO("Failed insert %s", name.c_str());
+        }
         publishLatchedData();
     }
     
