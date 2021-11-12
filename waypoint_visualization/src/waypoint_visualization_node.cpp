@@ -268,6 +268,7 @@ void Node::waypointsCallback(const waypoint_manager_msgs::Waypoints::ConstPtr &m
     pose_array_publisher.publish(pose_array);
 
     interactive_server.clear();
+    std::vector<visualization_msgs::InteractiveMarker> interactive_marker_msgs;
 
     for(const auto &wp : msg->waypoints) {
         visualization_msgs::InteractiveMarker interactive_marker_msg;
@@ -409,38 +410,79 @@ void Node::waypointsCallback(const waypoint_manager_msgs::Waypoints::ConstPtr &m
         interactive_marker_msg.description = wp.identity;
         interactive_marker_msg.header.stamp = ros::Time::now();
 
+        interactive_marker_msgs.push_back(interactive_marker_msg);
+    }
+    current_waypoints_msg = std::make_unique<waypoint_manager_msgs::Waypoints>(*msg);
+
+    if(!current_route_msg) {
+        ROS_WARN("No sync route path");
+        for(const auto &im_msg : interactive_marker_msgs) {
+            interactive_server.insert(
+                im_msg,
+                std::bind(
+                    &Node::waypointFeedback,
+                    this,
+                    std::placeholders::_1
+                )
+            );
+            menu_handler.apply(interactive_server, im_msg.name);
+        }
+        interactive_server.applyChanges();
+        return;
+    }
+    nav_msgs::Path route_path_msg;
+
+    constexpr auto text_marker_scale = 1.0;
+    int route_counter = 0;
+
+    std::unordered_map<std::string, int> count_of_hit_marker;
+    for(const auto &identity : current_route_msg->identities) {
+        visualization_msgs::InteractiveMarkerControl route_count_control;
+        visualization_msgs::Marker route_count_marker;
+
+        route_count_control.always_visible = true;
+        route_count_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        route_count_marker.color.r = 1;
+        route_count_marker.color.g = 1;
+        route_count_marker.color.b = 1;
+        route_count_marker.color.a = 1;
+        route_count_marker.scale.x = text_marker_scale;
+        route_count_marker.scale.y = text_marker_scale;
+        route_count_marker.scale.z = text_marker_scale;
+
+        for(auto &&im_msg : interactive_marker_msgs) {
+            if(identity == im_msg.name) {
+                geometry_msgs::PoseStamped waypoint_pose_msg;
+
+                waypoint_pose_msg.pose = im_msg.pose;
+                waypoint_pose_msg.header.frame_id = msg->info.header.frame_id;
+                waypoint_pose_msg.header.stamp = ros::Time::now();
+                
+                route_path_msg.poses.push_back(waypoint_pose_msg);
+
+                route_count_marker.text += std::to_string(route_counter) + "\n";
+                for(int i = 0; i < count_of_hit_marker[identity]; i ++) {
+                    route_count_marker.text += "\n\n";
+                }
+                route_count_control.markers.push_back(route_count_marker);
+                im_msg.controls.push_back(route_count_control);
+                count_of_hit_marker[identity] ++;
+            }
+        }
+        route_counter ++;
+    }
+    for(const auto &im_msg : interactive_marker_msgs) {
         interactive_server.insert(
-            interactive_marker_msg,
+            im_msg,
             std::bind(
                 &Node::waypointFeedback,
                 this,
                 std::placeholders::_1
             )
         );
-        menu_handler.apply(interactive_server, wp.identity);
+        menu_handler.apply(interactive_server, im_msg.name);
     }
-    current_waypoints_msg = std::make_unique<waypoint_manager_msgs::Waypoints>(*msg);
     interactive_server.applyChanges();
-
-    if(!current_route_msg) {
-        ROS_WARN("No sync route path");
-        return;
-    }
-    nav_msgs::Path route_path_msg;
-
-    for(const auto &i : current_route_msg->identities) {
-        for(const auto &wp : msg->waypoints) {
-            if(i == wp.identity) {
-                geometry_msgs::PoseStamped waypoint_pose_msg;
-
-                waypoint_pose_msg.pose = wp.pose;
-                waypoint_pose_msg.header.frame_id = msg->info.header.frame_id;
-                waypoint_pose_msg.header.stamp = ros::Time::now();
-                
-                route_path_msg.poses.push_back(waypoint_pose_msg);
-            }
-        }
-    }
     route_path_msg.header.frame_id = msg->info.header.frame_id;
     route_path_msg.header.stamp = ros::Time::now();
     route_path_publisher.publish(route_path_msg);
