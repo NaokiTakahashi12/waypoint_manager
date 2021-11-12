@@ -32,6 +32,7 @@ struct Parameters {
                 erase_waypoint_topic,
                 append_route_topic,
                 erase_route_topic,
+                insert_route_topic,
                 waypoints_topic,
                 route_topic,
                 route_path_topic;
@@ -54,6 +55,7 @@ class Node {
                        erase_waypoint_publisher,
                        append_route_publisher,
                        erase_route_publisher,
+                       insert_route_publisher,
                        route_path_publisher;
 
         ros::Subscriber route_subscriber,
@@ -71,6 +73,7 @@ class Node {
         void deleteWaypointFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &);
         void appendRouteFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &);
         void deleteRouteFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &);
+        void insertRouteFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &);
         void switchStopPointFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &);
 };
 
@@ -106,14 +109,14 @@ Node::Node() : nh(), private_nh("~"), interactive_server("waypoint_visualization
         std::string("waypoint/array")
     );
     private_nh.param(
-        "erase_waypoint_topic",
-        param.erase_waypoint_topic,
-        std::string("waypoint/erase")
-    );
-    private_nh.param(
         "update_waypoint_topic",
         param.update_waypoint_topic,
         std::string("waypoint/update")
+    );
+    private_nh.param(
+        "erase_waypoint_topic",
+        param.erase_waypoint_topic,
+        std::string("waypoint/erase")
     );
     private_nh.param(
         "waypoints_topic",
@@ -134,6 +137,11 @@ Node::Node() : nh(), private_nh("~"), interactive_server("waypoint_visualization
         "erase_route_topic",
         param.erase_route_topic,
         std::string("route/erase")
+    );
+    private_nh.param(
+        "insert_route_topic",
+        param.insert_route_topic,
+        std::string("route/insert")
     );
     private_nh.param(
         "route_path_topic",
@@ -171,6 +179,12 @@ Node::Node() : nh(), private_nh("~"), interactive_server("waypoint_visualization
             param.publish_queue_size,
             param.latch
           );
+    insert_route_publisher
+        = nh.advertise<std_msgs::String>(
+            param.insert_route_topic,
+            param.publish_queue_size,
+            param.latch
+          );
     route_path_publisher
         = nh.advertise<nav_msgs::Path>(
             param.route_path_topic,
@@ -197,6 +211,14 @@ Node::Node() : nh(), private_nh("~"), interactive_server("waypoint_visualization
         "Append route",
         std::bind(
             &Node::appendRouteFeedback,
+            this,
+            std::placeholders::_1
+        )
+    );
+    menu_handler.insert(
+        "Insert route",
+        std::bind(
+            &Node::insertRouteFeedback,
             this,
             std::placeholders::_1
         )
@@ -469,6 +491,15 @@ void Node::deleteRouteFeedback(const visualization_msgs::InteractiveMarkerFeedba
 
     msg.data = feedback->marker_name;
     erase_route_publisher.publish(msg);
+}
+
+void Node::insertRouteFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
+    ROS_INFO("Called insertRouteFeedback %s", feedback->marker_name.c_str());
+
+    std_msgs::String msg;
+
+    msg.data = feedback->marker_name;
+    insert_route_publisher.publish(msg);
 }
 
 void Node::switchStopPointFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
