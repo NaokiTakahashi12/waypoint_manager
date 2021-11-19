@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(waypoint_visualization VERSION 0.0.0 LANGUAGES CXX)
+project(waypoint_visualization VERSION 0.1.0 LANGUAGES CXX)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -7,14 +7,31 @@ project(waypoint_visualization VERSION 0.0.0 LANGUAGES CXX)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  tf
-  interactive_markers
-  geometry_msgs
-  visualization_msgs
-  waypoint_manager_msgs
+find_package(catkin REQUIRED
+    COMPONENTS
+        roscpp
+        tf
+        interactive_markers
+        pluginlib
+        rviz
+        geometry_msgs
+        visualization_msgs
+        waypoint_manager_msgs
 )
+
+if(rviz_QT_VERSION VERSION_LESS 5)
+    find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED
+        COMPONENTS
+            QtCore
+            QtGui
+    )
+else()
+    find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED
+        COMPONENTS
+            Core
+            Widgets
+    )
+endif()
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -108,7 +125,8 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES waypoint_visualization
-  CATKIN_DEPENDS waypoint_manager_msgs
+    CATKIN_DEPENDS
+        waypoint_manager_msgs
 #  DEPENDS system_lib
 )
 
@@ -119,14 +137,21 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
+    include
+    ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/waypoint_visualization.cpp
 # )
+qt_wrap_cpp(waypoint_rviz_panel MOC_FILES
+    src/rviz/waypoint_operator_panel.h
+)
+add_library(waypoint_rviz_panel SHARED
+    ${MOC_FILES}
+    src/rviz/waypoint_operator_panel.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -146,6 +171,15 @@ add_executable(waypoint_visualization_node
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+set_target_properties(waypoint_rviz_panel
+    PROPERTIES
+        OUTPUT_NAME waypoint_rviz_panel
+        VERSION ${PROJECT_VERSION}
+)
+target_compile_features(waypoint_rviz_panel
+    PRIVATE
+        cxx_std_11
+)
 set_target_properties(waypoint_visualization_node
     PROPERTIES
         OUTPUT_NAME waypoint_visualization_node
@@ -164,8 +198,20 @@ target_compile_features(waypoint_visualization_node
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+if(rviz_QT_VERSION VERSION_LESS 5)
+    target_link_libraries(waypoint_rviz_panel
+        ${catkin_LIBRARIES}
+        ${QT_LIBRARIES}
+    )
+else()
+    target_link_libraries(waypoint_rviz_panel
+        ${catkin_LIBRARIES}
+        Qt5::Widgets
+    )
+endif()
 target_link_libraries(waypoint_visualization_node
     ${catkin_LIBRARIES}
+    ${rviz_DEFAULT_PLUGIN_LIBRARIES}
 )
 
 #############
@@ -195,6 +241,11 @@ target_link_libraries(waypoint_visualization_node
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 # )
+install(TARGETS waypoint_rviz_panel
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
@@ -209,6 +260,11 @@ target_link_libraries(waypoint_visualization_node
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
+install(
+    FILES
+        rviz_plugins.xml
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##
