@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<library path="lib/libwaypoint_rviz_panel">
+  <class name="waypoint_visualization/WaypointOperatorPanel" type="waypoint_visualization::WaypointOperatorPanel" base_class_type="rviz::Panel">
+    <description>
+      A panel widget waypoint_server service caller for operator.
+    </description>
+  </class>
+</library>
