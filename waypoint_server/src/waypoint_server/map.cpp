@@ -200,6 +200,9 @@ namespace waypoint_server {
         }
         output_file << yaml << std::endl;;
         output_file.close();
+
+        setConvertStatus(false);
+        geometricConverter(*this);
     }
 
     Map::NamedWaypoints &Map::data() noexcept {
